@@ -94,7 +94,7 @@ jobs:
           output: trivy-SCA-report.sarif
         continue-on-error: true
 
-      - name: Subir resultados de Dependency-Check
+      - name: Subir resultados de SCA con trivy
         uses: actions/upload-artifact@v4
         with:
           name: trivy-SCA-report.sarif
@@ -149,3 +149,36 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: checkov.sarif
+
+
+      # =========================
+      # DAST – OWASP ZAP
+      # =========================
+      - name: Ejecutar OWASP ZAP
+        run: |
+          mkdir -p zap-results
+          chmod 777 zap-results
+
+          docker run -d --name app -p 5000:5000 app-image
+          sleep 30
+
+              docker run --rm \
+              --network host \
+              -v $(pwd)/zap-results:/zap/wrk \
+              zaproxy/zap-stable \
+              zap-baseline.py \
+              -t http://localhost:5000 \
+              -J zap-report.json \
+              -w zap-report.sarif \
+              -I || true
+
+      - name: Subir resultados de OWASP ZAP
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-report
+          path: zap-results/zap-report.json
+      
+      - name: ZAP SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: zap-results/zap-report.sarif
