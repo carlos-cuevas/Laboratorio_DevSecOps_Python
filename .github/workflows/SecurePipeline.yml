@@ -83,7 +83,7 @@ jobs:
           scan-ref: ./App
           format: sarif
           output: trivy-SCA-report.sarif
-              continue-on-error: true
+        continue-on-error: true
 
       - name: Subir resultados de Dependency-Check
         uses: actions/upload-artifact@v4
