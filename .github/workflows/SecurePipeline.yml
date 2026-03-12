@@ -146,6 +146,6 @@ jobs:
           path: checkov-report.json
 
       - name: Checkov SARIF
-              uses: github/codeql-action/upload-sarif@v3
-              with:
-                sarif_file: checkov.sarif
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: checkov.sarif
