@@ -127,9 +127,9 @@ jobs:
           path: trivy-report-ImagenContenedor.json
 
       - name: Trivy SARIF
-              uses: github/codeql-action/upload-sarif@v3
-              with:
-                sarif_file: trivy-report-ImagenContenedor.sarif 
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-report-ImagenContenedor.sarif 
 
       # =========================
       # IMAGE SCAN – CHECKOV
