@@ -59,19 +59,28 @@ jobs:
           name: gitleaks-report
           path: gitleaks-report.sarif
 
+      - name: Gitleaks SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gitleaks-report.sarif
       # =========================
       # SAST – SEMGREP
       # =========================
       - name: Ejecutar Semgrep 
         run: |
           pip install semgrep
-          semgrep --config p/python ./App --json > semgrep-report.json || true
+          semgrep --config p/python ./App --json > semgrep-report.json && semgrep --config p/python ./App --sarif > semgrep-report.sarif || true
 
       - name: Subir resultados de Semgrep 
         uses: actions/upload-artifact@v4
         with:
           name: semgrep-report
           path: semgrep-report.json
+
+      - name: Semgrep SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep-report.sarif
 
       # =========================
       # SCA – Trivy
@@ -102,17 +111,25 @@ jobs:
         with:
           scan-type: image
           image-ref: app-image
-          format: sarif
-          output: trivy-report-ImagenContenedor.sarif
+          format: json
+          output: trivy-report-ImagenContenedor.json
           ignore-unfixed: true
           timeout: 25m
         continue-on-error: true
 
+      - name: Generar reportes SARIF de Trivy
+        run: trivy image app-image --format sarif --output trivy-report-ImagenContenedor.sarif --ignore-unfixed --exit-code 0
+
       - name: Subir resultados de Trivy
         uses: actions/upload-artifact@v4
         with:
-          name: trivy-report-ImagenContenedor.sarif
-          path: trivy-report-ImagenContenedor.sarif
+          name: trivy-report-ImagenContenedor
+          path: trivy-report-ImagenContenedor.json
+
+      - name: Trivy SARIF
+              uses: github/codeql-action/upload-sarif@v3
+              with:
+                sarif_file: trivy-report-ImagenContenedor.sarif 
 
       # =========================
       # IMAGE SCAN – CHECKOV
@@ -127,3 +144,8 @@ jobs:
         with:
           name: checkov-report
           path: checkov-report.json
+
+      - name: Checkov SARIF
+              uses: github/codeql-action/upload-sarif@v3
+              with:
+                sarif_file: checkov.sarif
