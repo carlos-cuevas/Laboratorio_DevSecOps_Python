@@ -1,0 +1,129 @@
+name: Capacitacion-Inbursa-2026
+
+on:
+  push:
+    branches: [ "main", "python-insecure"]
+  pull_request:
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+      issues: write 
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+  laboratorio_appPython:
+    needs: setup
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+      issues: write 
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # =========================
+      # SECRET SCANNING
+      # =========================
+
+      - name: Ejecutar Gitleaks
+        shell: bash
+        run: |
+          docker run --rm \
+            -v "$PWD:/repo" \
+            ghcr.io/gitleaks/gitleaks:latest \
+            detect \
+            --source /repo \
+            --report-format sarif \
+            --report-path /repo/gitleaks-report.sarif \
+            --no-git
+        continue-on-error: true
+
+      - name: Subir resultados de Gitleaks
+        uses: actions/upload-artifact@v4
+        with:
+          name: gitleaks-report
+          path: gitleaks-report.sarif
+
+      # =========================
+      # SAST – SEMGREP
+      # =========================
+      - name: Ejecutar Semgrep 
+        run: |
+          pip install semgrep
+          semgrep --config p/python ./App --json > semgrep-report.json || true
+
+      - name: Subir resultados de Semgrep 
+        uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-report
+          path: semgrep-report.json
+
+      # =========================
+      # SCA – Trivy
+      # =========================
+      - name: Trivy FS Scan
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          scan-type: fs
+          scan-ref: ./App
+          format: sarif
+          output: trivy-SCA-report.sarif
+              continue-on-error: true
+
+      - name: Subir resultados de Dependency-Check
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-SCA-report.sarif
+          path: trivy-SCA-report.sarif
+
+      # =========================
+      # IMAGE SCAN – TRIVY
+      # =========================
+      - name: Build Docker image
+        run: docker build -t app-image ./App
+
+      - name: Ejecutar Trivy
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          scan-type: image
+          image-ref: app-image
+          format: sarif
+          output: trivy-report-ImagenContenedor.sarif
+          ignore-unfixed: true
+          timeout: 25m
+        continue-on-error: true
+
+      - name: Subir resultados de Trivy
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-report-ImagenContenedor.sarif
+          path: trivy-report-ImagenContenedor.sarif
+
+      # =========================
+      # IMAGE SCAN – CHECKOV
+      # =========================
+      - name: Ejecutar Checkov 
+        run: |
+          pip install -U checkov
+          checkov -d ./App -o json -o sarif --output-file-path checkov-report.json,checkov.sarif --soft-fail
+
+      - name: Upload Checkov report
+        uses: actions/upload-artifact@v4
+        with:
+          name: checkov-report
+          path: checkov-report.json
