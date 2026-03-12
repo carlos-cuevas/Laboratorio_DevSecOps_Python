@@ -100,6 +100,11 @@ jobs:
           name: trivy-SCA-report.sarif
           path: trivy-SCA-report.sarif
 
+      - name: Trivy SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-SCA-report.sarif
+
       # =========================
       # IMAGE SCAN – TRIVY
       # =========================
@@ -169,16 +174,29 @@ jobs:
               zap-baseline.py \
               -t http://localhost:5000 \
               -J zap-report.json \
-              -w zap-report.sarif \
               -I || true
+          ls /zap/wrk
 
       - name: Subir resultados de OWASP ZAP
         uses: actions/upload-artifact@v4
         with:
           name: zap-report
           path: zap-results/zap-report.json
-      
-      - name: ZAP SARIF
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: zap-results/zap-report.sarif
+      # =========================
+      # POLICY AS CODE – OPA
+      # =========================
+      - name: Instalar OPA
+        run: |
+          sudo apt update
+          sudo apt upgrade -y
+          curl -L -o opa https://github.com/open-policy-agent/opa/releases/download/v0.70.0/opa_linux_amd64_static
+          chmod +x opa
+          sudo mv opa /usr/local/bin/opa
+          opa version
+
+      - name: Evaluar politicas
+        run: |
+          opa eval -i trivy-report-ImagenContenedor.json -d policy/trivy.rego 'data.policy.violation'
+          opa eval -i checkov-report.json -d policy/checkov.rego 'data.policy.violation'
+          opa eval -i semgrep-report.sarif -d policy/semgrep.rego 'data.semgrep.vulnerability_class'
+          opa eval -i zap-results/zap-report.json -d policy/zap.rego 'data.alert_check.detected_alerts'
