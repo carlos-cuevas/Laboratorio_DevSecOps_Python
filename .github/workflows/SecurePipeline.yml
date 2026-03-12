@@ -177,7 +177,6 @@ jobs:
               -t http://localhost:5000 \
               -J zap-report.json \
               -I || true
-          ls /zap/wrk
 
       - name: Subir resultados de OWASP ZAP
         uses: actions/upload-artifact@v4
